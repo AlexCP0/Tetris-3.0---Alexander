@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tetris Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #222;
+            color: white;
+        }
+
+        #game-container {
+            margin-top: 50px;
+            position: relative;
+            display: inline-block;
+        }
+
+        #board {
+            width: 200px;
+            height: 400px;
+            border: 2px solid #333;
+            background-color: #000;
+            position: relative;
+            display: grid;
+            grid-template-columns: repeat(10, 20px);
+            grid-template-rows: repeat(20, 20px);
+        }
+
+        .block {
+            width: 20px;
+            height: 20px;
+            background-color: #222;
+            border: 1px solid #111;
+        }
+
+        .tetromino {
+            background-color: #ff0;
+        }
+
+        .tetromino.I { background-color: cyan; }
+        .tetromino.O { background-color: yellow; }
+        .tetromino.T { background-color: purple; }
+        .tetromino.S { background-color: green; }
+        .tetromino.Z { background-color: red; }
+        .tetromino.J { background-color: blue; }
+        .tetromino.L { background-color: orange; }
+
+        .score {
+            margin-top: 20px;
+        }
+
+        .game-over {
+            color: red;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+    </style>
+</head>
+<body>
+
+    <h1>Tetris Game</h1>
+    
+    <div id="game-container">
+        <div id="board"></div>
+    </div>
+    
+    <div class="score">
+        <h2>Score: <span id="score">0</span></h2>
+    </div>
+
+    <script>
+        // Tetris Game Code
+        const board = document.getElementById("board");
+        const scoreDisplay = document.getElementById("score");
+        const boardWidth = 10;
+        const boardHeight = 20;
+        let score = 0;
+        let gameOver = false;
+
+        // Create the game board
+        const createBoard = () => {
+            const grid = [];
+            for (let i = 0; i < boardHeight; i++) {
+                const row = [];
+                for (let j = 0; j < boardWidth; j++) {
+                    const block = document.createElement("div");
+                    block.classList.add("block");
+                    board.appendChild(block);
+                    row.push(block);
+                }
+                grid.push(row);
+            }
+            return grid;
+        };
+
+        const grid = createBoard();
+
+        // Define Tetromino shapes and colors
+        const tetrominoes = [
+            { shape: [[1, 1, 1, 1]], color: 'I' },  // I
+            { shape: [[1, 1], [1, 1]], color: 'O' },  // O
+            { shape: [[0, 1, 0], [1, 1, 1]], color: 'T' },  // T
+            { shape: [[0, 1, 1], [1, 1, 0]], color: 'S' },  // S
+            { shape: [[1, 1, 0], [0, 1, 1]], color: 'Z' },  // Z
+            { shape: [[1, 0, 0], [1, 1, 1]], color: 'J' },  // J
+            { shape: [[0, 0, 1], [1, 1, 1]], color: 'L' },  // L
+        ];
+
+        let currentTetromino = null;
+
+        // Randomly select and position a tetromino
+        const generateTetromino = () => {
+            const randomIndex = Math.floor(Math.random() * tetrominoes.length);
+            currentTetromino = { ...tetrominoes[randomIndex] };
+            currentTetromino.row = 0;
+            currentTetromino.col = Math.floor(boardWidth / 2) - Math.floor(currentTetromino.shape[0].length / 2);
+        };
+
+        // Draw the tetromino on the board
+        const drawTetromino = () => {
+            currentTetromino.shape.forEach((row, rowIndex) => {
+                row.forEach((block, colIndex) => {
+                    if (block === 1) {
+                        const gridIndex = (currentTetromino.row + rowIndex) * boardWidth + (currentTetromino.col + colIndex);
+                        grid[Math.floor(gridIndex / boardWidth)][gridIndex % boardWidth].classList.add('tetromino', currentTetromino.color);
+                    }
+                });
+            });
+        };
+
+        // Remove the tetromino from the board
+        const removeTetromino = () => {
+            currentTetromino.shape.forEach((row, rowIndex) => {
+                row.forEach((block, colIndex) => {
+                    if (block === 1) {
+                        const gridIndex = (currentTetromino.row + rowIndex) * boardWidth + (currentTetromino.col + colIndex);
+                        grid[Math.floor(gridIndex / boardWidth)][gridIndex % boardWidth].classList.remove('tetromino', currentTetromino.color);
+                    }
+                });
+            });
+        };
+
+        // Move the tetromino down
+        const moveTetrominoDown = () => {
+            if (gameOver) return;
+
+            removeTetromino();
+            currentTetromino.row++;
+            if (collision()) {
+                currentTetromino.row--;
+                placeTetromino();
+                checkForLines();
+                generateTetromino();
+                if (collision()) {
+                    gameOver = true;
+                    showGameOver();
+                }
+            }
+            drawTetromino();
+        };
+
+        // Check for collision
+        const collision = () => {
+            return currentTetromino.shape.some((row, rowIndex) => {
+                return row.some((block, colIndex) => {
+                    if (block === 1) {
+                        const x = currentTetromino.col + colIndex;
+                        const y = currentTetromino.row + rowIndex;
+                        return (
+                            x < 0 || x >= boardWidth || y >= boardHeight || grid[y] && grid[y][x].classList.contains('tetromino')
+                        );
+                    }
+                    return false;
+                });
+            });
+        };
+
+        // Place the tetromino on the board
+        const placeTetromino = () => {
+            currentTetromino.shape.forEach((row, rowIndex) => {
+                row.forEach((block, colIndex) => {
+                    if (block === 1) {
+                        const x = currentTetromino.col + colIndex;
+                        const y = currentTetromino.row + rowIndex;
+                        grid[y][x].classList.add('tetromino', currentTetromino.color);
+                    }
+                });
+            });
+        };
+
+        // Check for full lines
+        const checkForLines = () => {
+            for (let row = boardHeight - 1; row >= 0; row--) {
+                if (grid[row].every(cell => cell.classList.contains('tetromino'))) {
+                    grid[row].forEach(cell => cell.classList.remove('tetromino', currentTetromino.color));
+                    score += 10;
+                    scoreDisplay.textContent = score;
+                    for (let r = row; r >= 1; r--) {
+                        grid[r].forEach((cell, c) => {
+                            grid[r][c].classList = grid[r - 1][c].classList;
+                        });
+                    }
+                }
+            }
+        };
+
+        // Show Game Over message
+        const showGameOver = () => {
+            const gameOverMessage = document.createElement('div');
+            gameOverMessage.classList.add('game-over');
+            gameOverMessage.textContent = 'Game Over!';
+            document.body.appendChild(gameOverMessage);
+        };
+
+        // Control the tetromino with arrow keys
+        const controlTetromino = (e) => {
+            if (gameOver) return;
+
+            if (e.key === 'ArrowLeft') {
+                removeTetromino();
+                currentTetromino.col--;
+                if (collision()) currentTetromino.col++;
+                drawTetromino();
+            }
+            if (e.key === 'ArrowRight') {
+                removeTetromino();
+                currentTetromino.col++;
+                if (collision()) currentTetromino.col--;
+                drawTetromino();
+            }
+            if (e.key === 'ArrowDown') {
+                moveTetrominoDown();
+            }
+            if (e.key === 'ArrowUp') {
+                rotateTetromino();
+            }
+        };
+
+        // Rotate the tetromino
+        const rotateTetromino = () => {
+            removeTetromino();
+            currentTetromino.shape = rotateMatrix(currentTetromino.shape);
+            if (collision()) {
+                currentTetromino.shape = rotateMatrix(currentTetromino.shape, true);
+           
